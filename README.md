@@ -18,6 +18,8 @@ A small CLI based application that will setup a ghidra headless batch runner to 
 * The following VCPKG packages:<br/>
 Minhook ```vcpkg install minhook:x64-windows-static```<br/>
 
+* (not required but recommended) My "GlummysFishingRod" to inject an inject-able dll
+
 # Dumping exported functions (simple explanation)
 
 * Launch "GlummysHookerKitchen.exe", first launch will tell you right away to select your ghidra root path
