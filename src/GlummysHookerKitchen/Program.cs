@@ -42,7 +42,8 @@ class Program
         target = Console.ReadLine() ?? string.Empty;
         target = target.Replace("\"", ""); //Normalize path
         targetExtension = Path.GetExtension(target);
-        targetName = Path.GetFileName(target).Split('.')[0];
+        string tempName = Path.GetFileName(target);
+        targetName = tempName.Substring(0, tempName.LastIndexOf('.'));
 
         if (string.IsNullOrEmpty(target) || !File.Exists(target))
         {
@@ -235,6 +236,7 @@ void InitHooks()
             $"it is also expected that its called: {targetName}_O{targetExtension}");
         Console.WriteLine("=========================");
     }
+
 
     static void DumpTarget(string target, List<string> exports)
     {
