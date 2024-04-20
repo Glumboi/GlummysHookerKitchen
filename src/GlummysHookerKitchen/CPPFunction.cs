@@ -25,14 +25,39 @@ public class CPPParamter
         if (param.IndexOf(' ') != -1)
         {
             var splitBySpace = param.Split(' ');
-
             Name = splitBySpace.Last();
-            Type = splitBySpace.First();
 
-            foreach (var pair in TypeDatabaseConstants.GhidraTypeFriendlyTypeMap.Where(pair => Type == pair.Key))
+            /* int spaceCount = splitBySpace.Length - 1;
+             if (spaceCount >
+                 1) //Allow double types like long long when they are defined with a space between (didnt test this)
+             {
+                 int indexOfNameStart = Name.IndexOf(Name.First());
+                 Type = param.Substring(0, param.Length - indexOfNameStart - 1);
+             }*/
+            /*else
+            {*/
+            string tempType = splitBySpace.First();
+            string tempTypeNoPtr = tempType.Replace("*", "").Replace("&", "");
+
+            int len = TypeDatabaseConstants.GhidraTypeFriendlyTypeMap.Count;
+            for (int i = 0; i < len; i++)
             {
-                Type = pair.Value;
+                KeyValuePair<string, string> pair =
+                    TypeDatabaseConstants.GhidraTypeFriendlyTypeMap.ElementAt(i);
+                if (tempTypeNoPtr == pair.Key)
+                    tempType = tempType.Replace(pair.Key, pair.Value);
             }
+
+            for (int j = 0; j < TypeDatabaseConstants.DoubleTypeDatabase.Count; j++)
+            {
+                KeyValuePair<string, string> pair2 =
+                    TypeDatabaseConstants.DoubleTypeDatabase.ElementAt(j);
+                if (tempTypeNoPtr == pair2.Key)
+                    tempType = tempType.Replace(pair2.Key, pair2.Value);
+            }
+
+            Type = tempType;
+            //}
         }
 
         //Do nothing if parameter only consists of void, so we have clean code
@@ -60,12 +85,28 @@ public class CPPFunction
     {
         get
         {
-            foreach (var pair in TypeDatabaseConstants.GhidraTypeFriendlyTypeMap)
+            int len = TypeDatabaseConstants.GhidraTypeFriendlyTypeMap.Count;
+            string tempType = backPartSplitted.First();
+            string tempTypeNoPtr = tempType.Replace("*", "").Replace("&", "");
+
+
+            for (int i = 0; i < len; i++)
             {
-                if (backPartSplitted.First() == pair.Key) return pair.Value;
+                KeyValuePair<string, string> pair =
+                    TypeDatabaseConstants.GhidraTypeFriendlyTypeMap.ElementAt(i);
+                if (tempTypeNoPtr == pair.Key)
+                    tempType = tempType.Replace(pair.Key, pair.Value);
             }
 
-            return backPartSplitted.First();
+            for (int j = 0; j < TypeDatabaseConstants.DoubleTypeDatabase.Count; j++)
+            {
+                KeyValuePair<string, string> pair2 =
+                    TypeDatabaseConstants.DoubleTypeDatabase.ElementAt(j);
+                if (tempTypeNoPtr == pair2.Key)
+                    tempType = tempType.Replace(pair2.Key, pair2.Value);
+            }
+
+            return tempType;
         }
     }
 
@@ -81,12 +122,12 @@ public class CPPFunction
     {
         get
         {
-            if (backPartSplitted.Length < 3)
+            return "__stdcall"; //Only __stdcall for now due to some issues with undefined calling conventions 
+            /*if (backPartSplitted.Length < 3)
             {
-                return "__stdcall";
             }
 
-            return backPartSplitted[^1]; //Calling convention should be between name and return type
+            return backPartSplitted[^1]; //Calling convention should be between name and return type*/
         }
     }
 
@@ -181,8 +222,16 @@ public class CPPFunction
         }
 
         builder.Append(')');
+
+        StringBuilder printMsgBuilder =
+            new StringBuilder($"\n\tTOPSEPERATOR << \"{Name}\" << \" called with parameters:\\n\"");
+        foreach (var parameter in Parameters)
+        {
+            printMsgBuilder.Append($"\n\t<< \"{parameter.Name}: \" << {parameter.Name} << \"\\n\"");
+        }
+
         builder.Append(
-            $"\n{{\n\tDEBUG_TO_CONSOLE(\"{Name}\" << \" called!\\n\");\n\n\treturn {Name}_o({returnParametersBuilder.ToString()});\n}}");
+            $"\n{{\n\tDEBUG_TO_CONSOLE({printMsgBuilder});\n\n\treturn {Name}_o({returnParametersBuilder.ToString()});\n}}");
         return builder.ToString();
     }
 

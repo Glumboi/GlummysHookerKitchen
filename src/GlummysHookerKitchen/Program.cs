@@ -130,6 +130,9 @@ class Program
     std::cout << msg; \
 }
 
+#define TOPSEPERATOR ""================================================\n""
+#define BOTTOMSEPERATOR ""\n================================================\n""
+
 #pragma region Helpers
 
 template<typename targetType>
