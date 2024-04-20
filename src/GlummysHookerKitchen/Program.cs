@@ -10,6 +10,8 @@ class Program
     private static string target = string.Empty;
     private static string targetExtension = string.Empty;
     private static string targetName = string.Empty;
+    private static string currentDirectory = Directory.GetCurrentDirectory();
+    private static string outputDir = currentDirectory + "\\Out";
     private static char quote = '\"';
 
     [STAThread]
@@ -20,7 +22,7 @@ class Program
             Console.WriteLine("No ghidra path found in the config, please select your ghidra location!");
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.InitialDirectory = Directory.GetCurrentDirectory();
+                fbd.InitialDirectory = currentDirectory;
                 fbd.Description = "Please select your ghidra location!";
                 DialogResult result = fbd.ShowDialog();
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
@@ -86,7 +88,7 @@ class Program
         string sigFile = string.Empty;
         using (OpenFileDialog dlg = new OpenFileDialog())
         {
-            dlg.InitialDirectory = Directory.GetCurrentDirectory();
+            dlg.InitialDirectory = currentDirectory;
             dlg.Filter = "txt files (*.tx)|*.txt|All files (*.*)|*.*";
             dlg.FilterIndex = 2;
             dlg.Title = "Select sig file...";
@@ -168,7 +170,7 @@ inline static void AssignAddressToOriginalUsingModule(
 
         foreach (var fn in functions)
         {
-            headerBuilder.Append(fn.GetFullHook(asProxy) + "\n\n");
+            headerBuilder.Append(fn.GetFullHook() + "\n\n");
         }
 
         headerBuilder.Append(@$"
@@ -191,12 +193,7 @@ void InitHooks()
     MH_STATUS minhookEnableStat = MH_Initialize();
     if (minhookEnableStat == MH_OK)
     {{
-        {(asProxy ? @$"char buffer[MAX_PATH];
-        GetCurrentDirectory(MAX_PATH, buffer);
-        strcat_s(buffer, ""\\{targetName + "_o" + targetExtension}"");
-        if (!LoadLibrary(buffer)) return;
-        " : string.Empty)}
-        HMODULE targetModule = GetModuleHandleA(""{Path.GetFileName(targetName + "_o" + targetExtension)}"");
+        HMODULE targetModule = GetModuleHandleA(""{(asProxy ? targetName + "_O" + targetExtension : $"{targetName + "_O" + targetExtension}")}"");
 
 ");
 
@@ -217,9 +214,26 @@ void InitHooks()
 	    if (enableStat != MH_OK) {} //Handle errors
     }
 }");
-        string headerFilePath = "Hooks.h";
+        if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
+
+        string headerFilePath = outputDir + "\\Hooks.h";
+        string cppFilePath = outputDir + "\\dllmain.cpp";
+
         File.WriteAllText(headerFilePath, headerBuilder.ToString());
         Console.WriteLine("Wrote all hooks to the file: " + headerFilePath);
+        Console.WriteLine("Creating dllmain.cpp");
+        File.WriteAllText(cppFilePath, SharpDll_Mod.ProcessTarget(target));
+        Console.WriteLine("Wrote cpp dllmain source file to: " + cppFilePath);
+        Console.WriteLine("Copying original dll to output...");
+        File.Copy(target, outputDir + $"\\{targetName}_O{targetExtension}", true);
+        Console.WriteLine("Done copying original dll to output!");
+        Console.Write("\n");
+        Console.WriteLine("\tIMPORTANT");
+        Console.WriteLine("=========================");
+        Console.WriteLine(
+            $"The original dll is to be expected in the same path as the proxy dll, " +
+            $"it is also expected that its called: {targetName}_O{targetExtension}");
+        Console.WriteLine("=========================");
     }
 
     static void DumpTarget(string target, List<string> exports)
