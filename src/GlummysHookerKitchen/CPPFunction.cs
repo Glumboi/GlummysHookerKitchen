@@ -224,10 +224,11 @@ public class CPPFunction
         builder.Append(')');
 
         StringBuilder printMsgBuilder =
-            new StringBuilder($"\n\tTOPSEPERATOR << \"{Name}\" << \" called with parameters:\\n\"");
+            new StringBuilder($"\n\tTOPSEPERATOR << \"{Name}\" << \" called!\\n\"");
         foreach (var parameter in Parameters)
         {
-            printMsgBuilder.Append($"\n\t<< \"{parameter.Name}: \" << {parameter.Name} << \"\\n\"");
+            if (parameter.Type != string.Empty)
+                printMsgBuilder.Append($"\n\t<< \"{parameter.Name}: \" << {parameter.Name} << \"\\n\"");
         }
 
         builder.Append(
