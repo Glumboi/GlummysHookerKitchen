@@ -166,7 +166,7 @@ public class CPPFunction
     {
         Console.WriteLine("Backpart: " + BackPart);
         Console.WriteLine("Hook:\n");
-        Console.WriteLine(GetFullHook());
+        Console.WriteLine(GetFullHook(false));
         Console.Write('\n');
         /*Console.WriteLine("Function typedef:\n" + GetFunctionTypeDef());
         Console.WriteLine("Function hook:\n" + GetFunctionHook());*/
@@ -195,7 +195,7 @@ public class CPPFunction
 
     private string GetFunctionHook()
     {
-        StringBuilder builder = new StringBuilder($"static {ReturnType} {Name}_hook(");
+        StringBuilder builder = new StringBuilder($"{ReturnType} {Name}(");
         for (var i = 0; i < Parameters.Count; i++)
         {
             var parameter = Parameters[i];
@@ -236,8 +236,12 @@ public class CPPFunction
         return builder.ToString();
     }
 
-    public string GetFullHook()
+    public string GetFullHook(bool isExport)
     {
-        return GetFunctionTypeDef() + "\n\n" + GetFunctionHook();
+        string result = isExport
+            ? "extern \"C\" __declspec(dllexport)\n"
+            : "";
+        result = GetFunctionTypeDef() + "\n\n" + result + GetFunctionHook() + "\n\n";
+        return result;
     }
 }

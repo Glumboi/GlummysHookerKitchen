@@ -8,6 +8,8 @@ class Program
 {
     private static KitchenSettings settings = new KitchenSettings("KitchenConfig.ini");
     private static string target = string.Empty;
+    private static string targetExtension = string.Empty;
+    private static string targetName = string.Empty;
     private static char quote = '\"';
 
     [STAThread]
@@ -37,6 +39,8 @@ class Program
         Console.WriteLine("Enter target compiled file: ");
         target = Console.ReadLine() ?? string.Empty;
         target = target.Replace("\"", ""); //Normalize path
+        targetExtension = Path.GetExtension(target);
+        targetName = Path.GetFileName(target).Split('.')[0];
 
         if (string.IsNullOrEmpty(target) || !File.Exists(target))
         {
@@ -56,11 +60,15 @@ class Program
             "If you have already dumped all export sigs, you can now enter '1' to parse it into C++ source files" +
             " (enter 0 or anything other than 1 to dump from the target):");
 
-        short.TryParse(Console.ReadLine(), out var choice);
+        short choice = 0;
+        short.TryParse(Console.ReadLine(), out choice);
 
         if (choice == 1)
         {
-            ParseDump(target, exports);
+            Console.WriteLine(
+                "Do you want to create a classic, inject-able hooks.h file or a proxy hooks.h file including an exports.def file?\n(1=proxy, 0=classic)");
+            short.TryParse(Console.ReadLine(), out choice);
+            ParseDump(target, exports, choice == 1);
         }
         else
         {
@@ -71,7 +79,7 @@ class Program
         Console.ReadKey();
     }
 
-    static void ParseDump(string target, List<string> exports)
+    static void ParseDump(string target, List<string> exports, bool asProxy)
     {
         Console.WriteLine("Please select the text file containing the exported sigs!");
 
@@ -96,14 +104,6 @@ class Program
         {
             //TODO: Fix duplication bug in the python script, instead of here!
             CPPFunction fn = new CPPFunction(sig);
-            bool alreadyDefined = false;
-            foreach (var fn2 in functions)
-            {
-                alreadyDefined = fn2.Name == fn.Name;
-            }
-
-            if (alreadyDefined) continue;
-
             Console.WriteLine("==== CPP FUNCTION ====");
             functions.Add(fn);
             fn.PrintInfo();
@@ -165,9 +165,10 @@ inline static void AssignAddressToOriginalUsingModule(
 
 ";
         StringBuilder headerBuilder = new StringBuilder(headerFileBase);
+
         foreach (var fn in functions)
         {
-            headerBuilder.Append(fn.GetFullHook() + "\n\n");
+            headerBuilder.Append(fn.GetFullHook(asProxy) + "\n\n");
         }
 
         headerBuilder.Append(@$"
@@ -190,7 +191,12 @@ void InitHooks()
     MH_STATUS minhookEnableStat = MH_Initialize();
     if (minhookEnableStat == MH_OK)
     {{
-        HMODULE targetModule = GetModuleHandleA(""{Path.GetFileName(target)}"");
+        {(asProxy ? @$"char buffer[MAX_PATH];
+        GetCurrentDirectory(MAX_PATH, buffer);
+        strcat_s(buffer, ""\\{targetName + "_o" + targetExtension}"");
+        if (!LoadLibrary(buffer)) return;
+        " : string.Empty)}
+        HMODULE targetModule = GetModuleHandleA(""{Path.GetFileName(targetName + "_o" + targetExtension)}"");
 
 ");
 
@@ -201,7 +207,7 @@ void InitHooks()
 	    {fn.Name}_o,
 	    ""{fn.Name}"",
 	    targetModule);
-        MAKE_HOOK({fn.Name}_o, {fn.Name}_hook);
+        MAKE_HOOK({fn.Name}_o, {fn.Name});
 
 ");
         }
